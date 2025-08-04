@@ -1,0 +1,49 @@
+#include <ESP8266WiFi.h>
+#include <WiFiClientSecure.h>
+
+const char* ssid = "YOUR_WIFI_SSID";
+const char* password = "YOUR_WIFI_PASSWORD";
+const char* telegramBotToken = "YOUR_BOT_TOKEN";
+const char* chatID = "YOUR_CHAT_ID";
+
+WiFiClientSecure client;
+
+String sendTelegramMessage(String message) {
+  String url = "https://api.telegram.org/bot";
+  url += telegramBotToken;
+  url += "/sendMessage?chat_id=";
+  url += chatID;
+  url += "&text=";
+  url += message;
+  client.setInsecure();
+  if (client.connect("api.telegram.org", 443)) {
+    client.print(String("GET ") + url + " HTTP/1.1\r\n" +
+                 "Host: api.telegram.org\r\n" +
+                 "Connection: close\r\n\r\n");
+    delay(1000);
+    while (client.available()) client.readStringUntil('\n');
+    client.stop();
+    return "Sent";
+  } else {
+    return "Connection failed";
+  }
+}
+
+void setup() {
+  Serial.begin(9600); // Match Arduino baud rate
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) delay(500);
+}
+
+void loop() {
+  if (Serial.available()) {
+    String line = Serial.readStringUntil('\n');
+    int sepIdx = line.indexOf(',');
+    if (sepIdx > 0) {
+      String mq135 = line.substring(0, sepIdx);
+      String mq7 = line.substring(sepIdx + 1);
+      String message = "Air Sensor Readings:\nMQ135: " + mq135 + "\nMQ7: " + mq7;
+      sendTelegramMessage(message);
+    }
+  }
+}
